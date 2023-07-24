@@ -44,7 +44,7 @@ typedef struct {
 
 uint32_t write_mem(uint8_t address, uint8_t *data, uint32_t size);
 uint32_t read_mem(uint8_t address, uint8_t *data, uint32_t size);
-uint32_t init_nrf24(nrf24_pin_config_t *pin_config, nrf24_config_t *config);
+uint32_t init_nrf24(const nrf24_pin_config_t *pin_config, const nrf24_config_t *config);
 uint32_t read_payload(uint8_t *recieveptr, uint32_t size);
 uint32_t write_payload(uint8_t *writeptr, uint32_t size);
 

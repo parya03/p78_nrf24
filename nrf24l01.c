@@ -17,10 +17,10 @@ static nrf24_config_t *nrf24_config;
 static inline void set_cs(uint8_t status) {
     while (!(SPI_SR(nrf24_pin_config->spi_periph) & SPI_SR_TXE) || (SPI_SR(nrf24_pin_config->spi_periph) & SPI_SR_BSY)); // Wait for transfer finished
     if(status) {
-        gpio_set(nrf24_pin_config->csn_pin, nrf24_pin_config->csn_pin);
+        gpio_set(nrf24_pin_config->csn_port, nrf24_pin_config->csn_pin);
     }
     else {
-        gpio_clear(nrf24_pin_config->csn_pin, nrf24_pin_config->csn_pin);
+        gpio_clear(nrf24_pin_config->csn_port, nrf24_pin_config->csn_pin);
     }
 }
 
@@ -37,6 +37,12 @@ static inline void wait_spi_not_busy() {
     while (!(SPI_SR(nrf24_pin_config->spi_periph) & SPI_SR_TXE) || (SPI_SR(nrf24_pin_config->spi_periph) & SPI_SR_BSY)); // Wait for transfer finished
 }
 
+// Return static global status variable
+uint8_t get_nrf_status(void) {
+    return nrf24_status;
+}
+
+// Write nrf24 memory address - Usually for register writes
 uint32_t write_mem(uint8_t address, uint8_t *data, uint32_t size) {
     
     set_cs(0);
@@ -85,7 +91,7 @@ uint32_t read_mem(uint8_t address, uint8_t *data, uint32_t size) {
     return 0;
 }
 
-uint32_t init_nrf24(nrf24_pin_config_t *pin_config, nrf24_config_t *config) {
+uint32_t init_nrf24(const nrf24_pin_config_t *pin_config, const nrf24_config_t *config) {
     // TODO: Other registers should be autoinit'd for testing, but maybe change later??
 
     nrf24_pin_config = pin_config;
