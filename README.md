@@ -19,5 +19,6 @@ Note: Make sure to set up SPI configuration for the SPI peripheral and pins prio
 After the radio is set up, memory (registers, etc) can be read and written by read_mem() and write_mem() respectively. Payloads can be read with read_payload().
 
 ## Compatibility with RF24 library
-It is possible to use this library in conjunction with devices running RF24 (ex. Arduino running RF24 transmitting and STM32 running p78_nrf recieving), but a few things need to be set up properly.
-RF24 seems to use channel 0x4C to communicate, so make sure to use that channel (or the same channel as the other device is using, if another). Auto acknowledge from RF24's side (using this as TX, RF24 as RX) doesn't seem to work yet (I will have to look into that), so make sure to turn that off on both sides if TX'ing using this library. Auto ack does work if using p78_nrf to RX, though.
+It is possible to use this library in conjunction with devices running RF24 (ex. Arduino running RF24 transmitting and STM32 running p78_nrf recieving), but a few things need to be set up properly:
+RF24 seems to use channel 0x4C to communicate, so make sure to use that channel (or the same channel as the other device is using, if another).
+Auto acknowledge from RF24's side to this library (using this as TX, RF24 as RX) doesn't seem to work yet (I will have to look into that), so make sure to turn that off on both sides if TX'ing using this library. Auto ack does work if using p78_nrf to RX, though.
