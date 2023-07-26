@@ -2,6 +2,9 @@
 #define NRF24_H
 
 #include <stdint.h>
+#include "pico.h"
+#include "pico/stdlib.h"
+#include "hardware/spi.h"
 
 typedef enum {
     NRF24_ROLE_TX = 0,
@@ -25,12 +28,8 @@ typedef enum {
 } rx_pipe_t;
 
 typedef struct {
-    uint32_t spi_periph; // SPI1, SPI2, SPI3, etc
-    uint32_t spi_port; // GPIO port for SPI
-    uint32_t spi_pins; // GPIO pins for SPI bitwise OR (|)'d together
-    uint32_t csn_port; // GPIO port for CSN
+    spi_inst_t *spi_periph; // SPI1, SPI2, SPI3, etc
     uint32_t csn_pin; // GPIO pin for CSN
-    uint32_t ce_port; // GPIO port for CE
     uint32_t ce_pin; // GPIO pin for CE
 } nrf24_pin_config_t;
 
