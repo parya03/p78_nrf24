@@ -144,13 +144,16 @@ uint32_t init_nrf24(const nrf24_pin_config_t *pin_config, const nrf24_config_t *
 	write_mem(NRF24_R_RF_SETUP, &data, 1);
 
     if(config->role == NRF24_ROLE_RX) {
+        data = config->enable_auto_ack * 0x3F;
+        write_mem(NRF24_R_EN_AA, &data, 1);
+        
         gpio_set(pin_config->ce_port, pin_config->ce_pin); // Set CE high
     }
     if(config->role == NRF24_ROLE_TX) {
         gpio_clear(pin_config->ce_port, pin_config->ce_pin); // Set CE low
         
         // Turn off auto ACK if TX role
-        data = 0;
+        data = config->enable_auto_ack * 0x3F;
         write_mem(NRF24_R_EN_AA, &data, 1);
     }
 
