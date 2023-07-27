@@ -27,6 +27,11 @@ typedef enum {
     NRF24_PIPE_5 = 5
 } rx_pipe_t;
 
+typedef enum {
+    NRF24_DATA_RATE_1MBPS = 0,
+    NRF24_DATA_RATE_2MBPS = 1 // MegaBITS/sec
+} data_rate_t;
+
 typedef struct {
     spi_inst_t *spi_periph; // SPI1, SPI2, SPI3, etc
     uint32_t csn_pin; // GPIO pin for CSN
@@ -39,6 +44,8 @@ typedef struct {
     nrf24_power_level_t power_level; // Power level for LNA
     uint8_t enable_auto_ack; // Enable auto ack TX/RX
     rx_pipe_t rx_pipe; // TODO
+    data_rate_t data_rate; // 1Mbps or 2Mbps
+
 } nrf24_config_t;
 
 uint32_t write_mem(uint8_t address, uint8_t *data, uint32_t size);
