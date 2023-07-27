@@ -140,7 +140,7 @@ uint32_t init_nrf24(const nrf24_pin_config_t *pin_config, const nrf24_config_t *
 	write_mem(NRF24_R_RF_CH, &data, 1);
 
     // RF Setup
-    data = 0x03;
+    data = (config->data_rate << 3) | (config->power_level << 1) | 0x01;
 	write_mem(NRF24_R_RF_SETUP, &data, 1);
 
     if(config->role == NRF24_ROLE_RX) {
