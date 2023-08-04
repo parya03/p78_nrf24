@@ -2,9 +2,18 @@
 #define NRF24_H
 
 #include <stdint.h>
+
+#ifdef RPI_PICO
 #include "pico.h"
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
+#endif
+
+#ifdef STM32F4
+#include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/spi.h>
+#endif
 
 typedef enum {
     NRF24_ROLE_TX = 0,
@@ -33,8 +42,12 @@ typedef enum {
 } data_rate_t;
 
 typedef struct {
-    spi_inst_t *spi_periph; // SPI1, SPI2, SPI3, etc
+    uint32_t spi_periph; // SPI1, SPI2, SPI3, etc
+    uint32_t spi_port; // GPIO port for SPI
+    uint32_t spi_pins; // GPIO pins for SPI bitwise OR (|)'d together
+    uint32_t csn_port; // GPIO port for CSN
     uint32_t csn_pin; // GPIO pin for CSN
+    uint32_t ce_port; // GPIO port for CE
     uint32_t ce_pin; // GPIO pin for CE
 } nrf24_pin_config_t;
 
