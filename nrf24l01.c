@@ -234,6 +234,7 @@ uint32_t init_nrf24(const nrf24_pin_config_t *pin_config, const nrf24_config_t *
     if(config->role == NRF24_ROLE_TX) {
         device_agnostic_gpio_put(pin_config->ce_port, pin_config->ce_pin, 0); // Set CE low
         
+        // Turn off auto ACK if TX role
         data = config->enable_auto_ack * 0x3F;
         write_mem(NRF24_R_EN_AA, &data, 1);
     }
