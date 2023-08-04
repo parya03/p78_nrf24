@@ -3,6 +3,18 @@
 
 #include <stdint.h>
 
+#ifdef RPI_PICO
+#include "pico.h"
+#include "pico/stdlib.h"
+#include "hardware/spi.h"
+#endif
+
+#ifdef STM32F4
+#include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/spi.h>
+#endif
+
 typedef enum {
     NRF24_ROLE_TX = 0,
     NRF24_ROLE_RX = 1
