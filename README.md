@@ -22,3 +22,9 @@ After the radio is set up, memory (registers, etc) can be read and written by re
 It is possible to use this library in conjunction with devices running RF24 (ex. Arduino running RF24 transmitting and STM32 running p78_nrf recieving), but a few things need to be set up properly:
 RF24 seems to use channel 0x4C to communicate, so make sure to use that channel (or the same channel as the other device is using, if another).
 Auto acknowledge from RF24's side to this library (using this as TX, RF24 as RX) doesn't seem to work yet (I will have to look into that), so make sure to turn that off on both sides if TX'ing using this library. Auto ack does work if using p78_nrf to RX, though.
+
+## Porting Guide
+To port the library to a different target (MCU, etc), create a C source file under platform_specific and implement the functions given in platform_specific.h.
+Make sure to use a #ifdef statement on the whole file to ensure the code is only compiled if your specific target is #defined by the build system.
+
+You will also need to modify the top level CMakeLists.txt file to add a new target for your platform with the correct define (for the #ifdef statement) and compile options.
