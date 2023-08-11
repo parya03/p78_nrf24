@@ -1,16 +1,33 @@
+/**
+    MIT License
+
+    Copyright (c) 2023 Pranit Arya
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+    ---------------------------------------------------------------------------------------
+
+    Main code file for the p78_nrf24 library.
+*/
+
 #include "nrf24l01.h"
-
-#ifdef RPI_PICO
-#include "pico.h"
-#include "pico/stdlib.h"
-#include "hardware/spi.h"
-#endif
-
-#ifdef STM32F4
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/spi.h>
-#endif
+#include "platform_specific.h"
 
 #define MAX_NRF24_READ_SIZE 32
 
@@ -19,71 +36,14 @@
 static uint8_t nrf24_status;
 
 // Pointer to config structs for internal library use
-static const nrf24_pin_config_t *nrf24_pin_config;
-static const nrf24_config_t *nrf24_config;
-
-// Includes checking busy bit, not just FIFO empty bit
-static inline void wait_spi_not_busy() {
-    #ifdef RPI_PICO
-    while (spi_is_busy(nrf24_pin_config->spi_periph)); // Wait for transfer finished
-    #endif
-
-    #ifdef STM32F4
-    while (!(SPI_SR(nrf24_pin_config->spi_periph) & SPI_SR_TXE) || (SPI_SR(nrf24_pin_config->spi_periph) & SPI_SR_BSY)); // Wait for transfer finished
-    #endif
-}
-
-// --------------------------------------------------------------------
-// Device agnostic functions help with compatibility between devices
-// --------------------------------------------------------------------
-
-static void device_agnostic_sleep(uint32_t ms) {
-    #ifdef RPI_PICO
-    sleep_ms(ms);
-    #endif
-
-    #ifdef STM32F4
-    for(int i = 0; i < (ms * 100000); i++) { // Not accurate, just gives ballpark figure
-        __asm__("nop");
-    }
-    #endif
-}
-
-static void device_agnostic_gpio_put(uint32_t port, uint32_t pin, uint8_t val) {
-    #ifdef RPI_PICO
-    gpio_put(pin, val);
-    #endif
-
-    #ifdef STM32F4
-    if(val) {
-        gpio_set(port, pin);
-    } else {
-        gpio_clear(port, pin);
-    }
-    #endif
-}
+const nrf24_pin_config_t *nrf24_pin_config;
+const nrf24_config_t *nrf24_config;
 
 // Set CS pin
 static inline void set_cs(uint8_t status) {
     wait_spi_not_busy(); // Wait for transfer finished
 
-    #ifdef STM32F4
-    if(status) {
-        gpio_set(nrf24_pin_config->csn_port, nrf24_pin_config->csn_pin);
-    }
-    else {
-        gpio_clear(nrf24_pin_config->csn_port, nrf24_pin_config->csn_pin);
-    }
-    #endif
-
-    #ifdef RPI_PICO
-    if(status) {
-        gpio_put(nrf24_pin_config->csn_pin, 1);
-    }
-    else {
-        gpio_put(nrf24_pin_config->csn_pin, 0);
-    }
-    #endif
+    device_agnostic_gpio_put(nrf24_pin_config->csn_port, nrf24_pin_config->csn_pin, status);
 }
 
 // static inline void read_rx_fifo_until_empty(uint8_t *store_var, uint32_t max_size) {
@@ -107,25 +67,13 @@ uint32_t write_mem(uint8_t address, uint8_t *data, uint32_t size) {
     address &= 0x1F; // Mask address to 5 bits
     address |= 0x20; // Set write bit
     
-    #ifdef RPI_PICO
     // Send instruction in format 001AAAAA where AAAAA is 5-bit address, store status
-    spi_write_read_blocking(nrf24_pin_config->spi_periph, &address, &nrf24_status, 1);
+    nrf24_spi_write(nrf24_pin_config->spi_periph, &address, &nrf24_status, 1);
     wait_spi_not_busy();
     // Send data
-    spi_write_blocking(nrf24_pin_config->spi_periph, data, size);
-    #endif
-
-    #ifdef STM32F4
-    // Send instruction in format 001AAAAA where AAAAA is 5-bit address
-    spi_send(nrf24_pin_config->spi_periph, ((address & 0x1F) | 0x20));
+    nrf24_spi_write(nrf24_pin_config->spi_periph, data, NULL, size);
     wait_spi_not_busy();
-    nrf24_status = spi_read(nrf24_pin_config->spi_periph);
-    // Send data
-    for(int i = 0; i < size; i++) {
-        spi_send(nrf24_pin_config->spi_periph, *(data + i));
-    }
-    #endif
-
+    
     set_cs(1);
     
     return 0;
@@ -147,26 +95,12 @@ uint32_t read_mem(uint8_t address, uint8_t *data, uint32_t size) {
 
     address &= 0x1F; // Mask address to 5 bits
     
-    #ifdef RPI_PICO
     // Send instruction in format 000AAAAA where AAAAA is 5-bit address
-    spi_write_read_blocking(nrf24_pin_config->spi_periph, &address, &nrf24_status, 1);
+    nrf24_spi_write(nrf24_pin_config->spi_periph, &address, &nrf24_status, 1);
     wait_spi_not_busy();
     // Read data
-    spi_read_blocking(nrf24_pin_config->spi_periph, 0x00, data, size);
-    #endif
-
-    #ifdef STM32F4
-    // Send instruction in format 000AAAAA where AAAAA is 5-bit address
-    spi_send(nrf24_pin_config->spi_periph, (address & 0x1F));
+    nrf24_spi_read(nrf24_pin_config->spi_periph, data, size);
     wait_spi_not_busy();
-    nrf24_status = spi_read(nrf24_pin_config->spi_periph);
-    // Read data
-    for(int i = 0; i < size; i++) {
-        spi_send(nrf24_pin_config->spi_periph, 0x00); // Keep clock clocking
-        wait_spi_not_busy();
-        *(data + i) = spi_read(nrf24_pin_config->spi_periph);
-    }
-    #endif
     
     set_cs(1);
 
@@ -244,10 +178,9 @@ uint32_t init_nrf24(const nrf24_pin_config_t *pin_config, const nrf24_config_t *
 
 uint32_t read_payload(uint8_t *recieveptr, uint32_t size) {
     set_cs(0);
-
-    #ifdef RPI_PICO
+    
     uint8_t data = 0x61;
-    spi_write_read_blocking(nrf24_pin_config->spi_periph, &data, &nrf24_status, 1); // Instruction for R_RX_PAYLOAD
+    nrf24_spi_write(nrf24_pin_config->spi_periph, &data, &nrf24_status, 1); // Instruction for R_RX_PAYLOAD
     wait_spi_not_busy();
     // nrf24_status = spi_read(nrf24_pin_config->spi_periph);
 
@@ -257,36 +190,22 @@ uint32_t read_payload(uint8_t *recieveptr, uint32_t size) {
     //     wait_spi_not_busy();
     //     *(recieveptr + i) = spi_read(nrf24_pin_config->spi_periph);
     // }
-    spi_read_blocking(nrf24_pin_config->spi_periph, 0x00, recieveptr, size);
-    #endif
-
-    #ifdef STM32F4
-    spi_send(nrf24_pin_config->spi_periph, 0x61); // Instruction for R_RX_PAYLOAD
+    nrf24_spi_read(nrf24_pin_config->spi_periph, recieveptr, size);
     wait_spi_not_busy();
-    nrf24_status = spi_read(nrf24_pin_config->spi_periph);
-
-    // Read data
-    for(int i = 0; i < size; i++) {
-        spi_send(nrf24_pin_config->spi_periph, 0x00); // Keep clock clocking
-        wait_spi_not_busy();
-        *(recieveptr + i) = spi_read(nrf24_pin_config->spi_periph);
-    }
-    #endif
-
+    
     set_cs(1);
 }
 
 uint32_t write_payload(uint8_t *writeptr, uint32_t size) {
     set_cs(0);
-
-    #ifdef RPI_PICO
+    
     uint8_t data = 0xA0;
-    spi_write_read_blocking(nrf24_pin_config->spi_periph, &data, &nrf24_status, 1); // Instruction for W_TX_PAYLOAD
+    nrf24_spi_write(nrf24_pin_config->spi_periph, &data, &nrf24_status, 1); // Instruction for W_TX_PAYLOAD
     wait_spi_not_busy();
     // nrf24_status = spi_read(nrf24_pin_config->spi_periph);
 
     // Write data
-    spi_write_blocking(nrf24_pin_config->spi_periph, writeptr, size);
+    nrf24_spi_write(nrf24_pin_config->spi_periph, writeptr, NULL, size);
     wait_spi_not_busy();
 
     set_cs(1);
@@ -294,32 +213,9 @@ uint32_t write_payload(uint8_t *writeptr, uint32_t size) {
     wait_spi_not_busy();
 
     // Pulse CE to start transmission
-    gpio_put(nrf24_pin_config->ce_pin, 1); // Set CE high
-    sleep_us(50);
-    gpio_put(nrf24_pin_config->ce_pin, 0); // Set CE low
-    #endif
-
-    #ifdef STM32F4
-    spi_send(nrf24_pin_config->spi_periph, 0xA0); // Instruction for W_TX_PAYLOAD
-    wait_spi_not_busy();
-    nrf24_status = spi_read(nrf24_pin_config->spi_periph);
-
-    // Write data
-    for(int i = 0; i < size; i++) {
-        spi_send(nrf24_pin_config->spi_periph, writeptr[i]);
-        wait_spi_not_busy();
-        // *(writeptr + i) = spi_read(nrf24_pin_config->spi_periph);
-    }
-
-    set_cs(1);
-
-    wait_spi_not_busy();
-
-    // Pulse CE to start transmission
-    gpio_set(nrf24_pin_config->ce_port, nrf24_pin_config->ce_pin); // Set CE high
+    device_agnostic_gpio_put(nrf24_pin_config->ce_port, nrf24_pin_config->ce_pin, 1); // Set CE high
     for(volatile int i = 0; i < 180; i++);
-    gpio_clear(nrf24_pin_config->ce_port, nrf24_pin_config->ce_pin); // Set CE low
-    #endif
-
+    device_agnostic_gpio_put(nrf24_pin_config->ce_port, nrf24_pin_config->ce_pin, 0); // Set CE low
+    
     set_cs(1);
 }

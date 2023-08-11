@@ -13,10 +13,12 @@ set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
-add_library(p78_nrf24_rpipico nrf24l01.c)
-target_sources(p78_nrf24_rpipico PRIVATE "nrf24l01.c")
-target_link_libraries(p78_nrf24_rpipico pico_stdlib hardware_gpio hardware_spi)
+add_library(p78_nrf24_rpipico STATIC)
 target_compile_definitions(p78_nrf24_rpipico PRIVATE RPI_PICO)
+target_sources(p78_nrf24_rpipico PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/nrf24l01.c"
+              "${CMAKE_CURRENT_SOURCE_DIR}/platform_specific.h"
+              "${CMAKE_CURRENT_SOURCE_DIR}/platform_specific/platform_rpipico.c")
+target_link_libraries(p78_nrf24_rpipico pico_stdlib hardware_gpio hardware_spi)
 
 # ------------------- STM32F429 -------------------
 
@@ -45,9 +47,11 @@ set(COMPILE_OPTIONS
 target_compile_options(stm32f429 INTERFACE ${COMPILE_OPTIONS})
 target_link_options(stm32f429 INTERFACE ${COMPILE_OPTIONS})
 
-add_library(p78_nrf24_stm32f4 nrf24l01.c)
+add_library(p78_nrf24_stm32f4 STATIC)
+target_compile_definitions(p78_nrf24_stm32f4 PRIVATE STM32F429)
 target_include_directories(p78_nrf24_stm32f4 PRIVATE ${libopencm3_SOURCE_DIR}/include)
-target_sources(p78_nrf24_stm32f4 PRIVATE "nrf24l01.h" "nrf24l01.c")
-target_compile_definitions(p78_nrf24_stm32f4 PRIVATE STM32F4)
+target_sources(p78_nrf24_stm32f4 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/nrf24l01.c"
+              "${CMAKE_CURRENT_SOURCE_DIR}/platform_specific.h"
+              "${CMAKE_CURRENT_SOURCE_DIR}/platform_specific/platform_stm32f4.c")
 target_compile_options(p78_nrf24_stm32f4 PRIVATE ${COMPILE_OPTIONS})
 target_link_directories(p78_nrf24_stm32f4 PRIVATE stm32f429)
